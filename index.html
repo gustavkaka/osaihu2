@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CYPHER WALLET</title>
+
+  <!-- PWA & アイコン設定 -->
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="theme-color" content="#050507">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #050507;
+      color: #F0F0F5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      max-width: 480px;
+      margin: 0 auto;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    /* 背景の微かなネオンオーラ */
+    body::before {
+      content: "";
+      position: absolute;
+      top: -120px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 320px;
+      height: 320px;
+      background: radial-gradient(circle, rgba(255, 42, 95, 0.12) 0%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main {
+      flex: 1;
+      padding: 24px 20px;
+      padding-bottom: 95px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .page {
+      display: none;
+      animation: pageIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .page.active {
+      display: block;
+    }
+
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* 高級感溢れるメインカード */
+    .balance-card {
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 28px 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* うっすら浮かぶモノクロねこアイコン */
+    .balance-card .cat-bg {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      width: 100px;
+      height: 100px;
+      color: rgba(255, 255, 255, 0.08);
+      pointer-events: none;
+      transform: rotate(12deg);
+    }
+
+    .balance-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #8E8E93;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .balance-amount {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -1px;
+      text-shadow: 0 0 20px rgba(255, 255, 255, 0.15);
+      position: relative;
+      z-index: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* フォームエリア */
+    .form-card {
+      background: rgba(18, 18, 22, 0.65);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 24px;
+      padding: 22px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    /* モード切替タブ */
+    .tab-toggle {
+      display: flex;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 22px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background: transparent;
+      color: #6E6E73;
+      font-weight: 700;
+      font-size: 0.75rem;
+      letter-spacing: 1.5px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: #FFFFFF;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .input-group {
+      margin-bottom: 18px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #8E8E93;
+      letter-spacing: 1.5px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 16px 18px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      color: #FFFFFF;
+      font-size: 1.05rem;
+      font-weight: 500;
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    /* 上下矢印（スピンボタン）を除去 */
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+
+    .input-group input:focus {
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.06);
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.05);
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 18px;
+      border: none;
+      border-radius: 16px;
+      background: #FFFFFF;
+      color: #000000;
+      font-weight: 800;
+      font-size: 0.85rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 8px 24px rgba(255, 255, 255, 0.15);
+      margin-top: 6px;
+    }
+
+    .submit-btn:active {
+      transform: scale(0.97);
+      opacity: 0.9;
+    }
+
+    /* 履歴画面ヘッダー ＆ バックアップアクション */
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .section-header {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #8E8E93;
+      text-transform: uppercase;
+    }
+
+    .backup-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .action-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #A0A0AB;
+      font-size: 0.62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .action-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+      color: #FFFFFF;
+    }
+
+    /* 日別純出費サマリーカード */
+    .daily-summary-card {
+      background: rgba(255, 42, 95, 0.06);
+      border: 1px solid rgba(255, 42, 95, 0.2);
+      border-radius: 18px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .daily-summary-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .daily-summary-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #FF2A5F;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .daily-summary-note {
+      font-size: 0.65rem;
+      color: #6E6E73;
+    }
+
+    .daily-summary-amount {
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: #FF2A5F;
+      letter-spacing: -0.5px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .history-list {
+      list-style: none;
+    }
+
+    .history-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 18px 20px;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .history-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .history-title {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: #FFFFFF;
+    }
+
+    .history-date {
+      font-size: 0.68rem;
+      color: #6E6E73;
+      letter-spacing: 0.5px;
+    }
+
+    .history-amount {
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: -0.5px;
+    }
+
+    .history-amount.expense {
+      color: #FF2A5F;
+    }
+
+    .history-amount.income {
+      color: #00F5A0;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6E6E73;
+      font-size: 0.8rem;
+      letter-spacing: 1px;
+    }
+
+    /* ナビゲーション */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      height: 75px;
+      background: rgba(5, 5, 7, 0.85);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 100;
+      padding-bottom: 10px;
+    }
+
+    .nav-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      background: none;
+      border: none;
+      color: #55555E;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 50%;
+    }
+
+    .nav-item.active {
+      color: #FFFFFF;
+    }
+
+    .nav-item svg {
+      width: 22px;
+      height: 22px;
+      fill: currentColor;
+      transition: transform 0.2s;
+    }
+
+    .nav-item.active svg {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+
+  <main>
+    <!-- 1ページ目：HOME -->
+    <section id="page-home" class="page active">
+      <div class="balance-card">
+        <svg class="cat-bg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 5c-3.8 0-7 2.2-8 6-.5 2 0 4.5 1.5 6.5 1.5 2 4 3 6.5 3s5-1 6.5-3c1.5-2 2-4.5 1.5-6.5-1-3.8-4.2-6-8-6z"/>
+          <path d="M4.5 9.5L2 4l5.5 2.5"/>
+          <path d="M19.5 9.5L22 4l-5.5 2.5"/>
+          <circle cx="9" cy="13" r="1"/>
+          <circle cx="15" cy="13" r="1"/>
+          <path d="M11 15.5c.6.4 1.4.4 2 0"/>
+        </svg>
+
+        <div class="balance-label">TOTAL BALANCE</div>
+        <div class="balance-amount" id="balance-display">¥ 0</div>
+      </div>
+
+      <div class="form-card">
+        <div class="tab-toggle">
+          <button class="tab-btn active" id="tab-expense" onclick="switchMode('expense')">PAY</button>
+          <button class="tab-btn" id="tab-income" onclick="switchMode('income')">TOP UP</button>
+        </div>
+
+        <form id="money-form" onsubmit="handleSubmit(event)">
+          <div class="input-group" id="title-group">
+            <label for="item-title">TITLE / MEMO</label>
+            <input type="text" id="item-title" placeholder="Coffee, Gym, Books..." required>
+          </div>
+
+          <div class="input-group">
+            <label for="item-amount">AMOUNT (JPY)</label>
+            <input type="number" id="item-amount" placeholder="0" min="1" required>
+          </div>
+
+          <button type="submit" class="submit-btn" id="submit-btn">RECORD EXPENSE</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- 2ページ目：HISTORY -->
+    <section id="page-history" class="page">
+      <div class="history-header">
+        <div class="section-header">TRANSACTION HISTORY</div>
+        <div class="backup-actions">
+          <button class="action-btn" onclick="exportData()">EXPORT</button>
+          <button class="action-btn" onclick="triggerImport()">IMPORT</button>
+        </div>
+      </div>
+
+      <input type="file" id="import-file" accept=".json" style="display: none;" onchange="handleImport(event)">
+
+      <!-- 今日の純支出サマリー -->
+      <div class="daily-summary-card">
+        <div class="daily-summary-info">
+          <span class="daily-summary-label">TODAY'S SPENT</span>
+          <span class="daily-summary-note">Pure Expense (Excl. Top Up)</span>
+        </div>
+        <div class="daily-summary-amount" id="today-spent-display">- ¥ 0</div>
+      </div>
+
+      <ul class="history-list" id="history-list">
+        <!-- JSで動的に追加されます -->
+      </ul>
+    </section>
+  </main>
+
+  <!-- ボトムナビゲーション -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-home" onclick="switchPage('home')">
+      <svg viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      HOME
+    </button>
+    <button class="nav-item" id="nav-history" onclick="switchPage('history')">
+      <svg viewBox="0 0 24 24"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
+      HISTORY
+    </button>
+  </nav>
+
+  <script>
+    let currentMode = 'expense';
+    let db = null;
+
+    let lastBalance = 0;
+    let lastTodayExpense = 0;
+
+    // --- Service Worker 登録 ---
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.error('Service Worker Register Error:', err);
+        });
+      });
+    }
+
+    // --- IndexedDB データベースの初期化 ---
+    function initDB() {
+      const request = indexedDB.open('CypherWalletDB', 1);
+
+      request.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains('records')) {
+          db.createObjectStore('records', { keyPath: 'id', autoIncrement: true });
+        }
+      };
+
+      request.onsuccess = (e) => {
+        db = e.target.result;
+        loadRecords();
+      };
+
+      request.onerror = (e) => {
+        console.error('IndexedDB Error:', e);
+      };
+    }
+
+    // 画面切り替え
+    function switchPage(page) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+      if (page === 'home') {
+        document.getElementById('page-home').classList.add('active');
+        document.getElementById('nav-home').classList.add('active');
+      } else {
+        document.getElementById('page-history').classList.add('active');
+        document.getElementById('nav-history').classList.add('active');
+      }
+    }
+
+    // モード切り替え (PAY / TOP UP)
+    function switchMode(mode) {
+      currentMode = mode;
+      const expenseBtn = document.getElementById('tab-expense');
+      const incomeBtn = document.getElementById('tab-income');
+      const titleGroup = document.getElementById('title-group');
+      const titleInput = document.getElementById('item-title');
+      const submitBtn = document.getElementById('submit-btn');
+
+      if (mode === 'expense') {
+        expenseBtn.classList.add('active');
+        incomeBtn.classList.remove('active');
+        titleGroup.style.display = 'block';
+        titleInput.required = true;
+        submitBtn.innerText = 'RECORD EXPENSE';
+      } else {
+        incomeBtn.classList.add('active');
+        expenseBtn.classList.remove('active');
+        titleGroup.style.display = 'none';
+        titleInput.required = false;
+        submitBtn.innerText = 'ADD BALANCE';
+      }
+    }
+
+    // データ保存
+    function handleSubmit(event) {
+      event.preventDefault();
+
+      const amountInput = document.getElementById('item-amount');
+      const titleInput = document.getElementById('item-title');
+
+      const amount = parseInt(amountInput.value, 10);
+      const title = currentMode === 'expense' ? titleInput.value.trim() : 'TOP UP';
+
+      if (!amount || amount <= 0) return;
+
+      const record = {
+        title: title,
+        amount: amount,
+        type: currentMode,
+        timestamp: new Date().toISOString()
+      };
+
+      const tx = db.transaction('records', 'readwrite');
+      const store = tx.objectStore('records');
+      store.add(record);
+
+      tx.oncomplete = () => {
+        amountInput.value = '';
+        titleInput.value = '';
+        loadRecords();
+      };
+    }
+
+    // データの読み込み
+    function loadRecords() {
+      if (!db) return;
+
+      const tx = db.transaction('records', 'readonly');
+      const store = tx.objectStore('records');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const records = request.result || [];
+        renderUI(records);
+      };
+    }
+
+    // JSON書き出し（EXPORT）
+    function exportData() {
+      if (!db) return;
+
+      const tx = db.transaction('records', 'readonly');
+      const store = tx.objectStore('records');
+      const request = store.getAll();
+
+      request.onsuccess = () => {
+        const records = request.result || [];
+        if (records.length === 0) {
+          alert('書き出すデータがありませんわ。');
+          return;
+        }
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(records, null, 2));
+        const downloadAnchor = document.createElement('a');
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `cypher_wallet_backup_${dateStr}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      };
+    }
+
+    // JSON復元（IMPORT）のファイル選択起動
+    function triggerImport() {
+      document.getElementById('import-file').click();
+    }
+
+    // JSONファイルの読み込みと復元処理
+    function handleImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedRecords = JSON.parse(e.target.result);
+          if (!Array.isArray(importedRecords)) {
+            alert('無効なバックアップファイルですわ。');
+            return;
+          }
+
+          if (!confirm('既存のデータを上書きして復元しますか？')) {
+            event.target.value = '';
+            return;
+          }
+
+          const tx = db.transaction('records', 'readwrite');
+          const store = tx.objectStore('records');
+
+          const clearReq = store.clear();
+          clearReq.onsuccess = () => {
+            importedRecords.forEach(record => {
+              delete record.id;
+              store.add(record);
+            });
+          };
+
+          tx.oncomplete = () => {
+            alert('データの復元が完了いたしましたわ！');
+            loadRecords();
+            event.target.value = '';
+          };
+        } catch (err) {
+          alert('ファイルの読み込みに失敗いたしましたわ。');
+          console.error(err);
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // 数値のアニメーション関数
+    function animateValue(element, start, end, prefix = '¥ ', duration = 400) {
+      if (start === end) {
+        element.innerText = `${prefix}${end.toLocaleString()}`;
+        return;
+      }
+
+      const startTime = performance.now();
+
+      function updateNumber(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const easeOut = 1 - Math.pow(1 - progress, 3);
+        const current = Math.floor(start + (end - start) * easeOut);
+
+        element.innerText = `${prefix}${current.toLocaleString()}`;
+
+        if (progress < 1) {
+          requestAnimationFrame(updateNumber);
+        } else {
+          element.innerText = `${prefix}${end.toLocaleString()}`;
+        }
+      }
+
+      requestAnimationFrame(updateNumber);
+    }
+
+    function renderUI(records) {
+      let totalBalance = 0;
+      let todayExpense = 0;
+
+      const todayStr = new Date().toDateString();
+      const historyList = document.getElementById('history-list');
+      historyList.innerHTML = '';
+
+      const sortedRecords = [...records].reverse();
+
+      records.forEach(r => {
+        if (r.type === 'income') {
+          totalBalance += r.amount;
+        } else {
+          totalBalance -= r.amount;
+
+          const rDateStr = new Date(r.timestamp).toDateString();
+          if (rDateStr === todayStr) {
+            todayExpense += r.amount;
+          }
+        }
+      });
+
+      const balanceElem = document.getElementById('balance-display');
+      const todaySpentElem = document.getElementById('today-spent-display');
+
+      animateValue(balanceElem, lastBalance, totalBalance, '¥ ', 450);
+      animateValue(todaySpentElem, lastTodayExpense, todayExpense, '- ¥ ', 450);
+
+      lastBalance = totalBalance;
+      lastTodayExpense = todayExpense;
+
+      if (sortedRecords.length === 0) {
+        historyList.innerHTML = '<div class="empty-state">NO TRANSACTIONS YET</div>';
+        return;
+      }
+
+      sortedRecords.forEach(r => {
+        const dateObj = new Date(r.timestamp);
+        const dateFormatted = `${dateObj.getMonth() + 1}/${dateObj.getDate()} ${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+
+        const li = document.createElement('li');
+        li.className = 'history-item';
+
+        const isExpense = r.type === 'expense';
+        const sign = isExpense ? '-' : '+';
+        const amountClass = isExpense ? 'expense' : 'income';
+
+        li.innerHTML = `
+          <div class="history-info">
+            <span class="history-title">${escapeHTML(r.title)}</span>
+            <span class="history-date">${dateFormatted}</span>
+          </div>
+          <div class="history-amount ${amountClass}">${sign} ¥ ${r.amount.toLocaleString()}</div>
+        `;
+
+        historyList.appendChild(li);
+      });
+    }
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    window.addEventListener('DOMContentLoaded', initDB);
+  </script>
+</body>
+</html>
