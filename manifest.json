@@ -1,14 +1,14 @@
 {
-  "id": "/osaihu2/",
-  "name": "CYPHER WALLET",
-  "short_name": "CYPHER",
-  "description": "High-end minimal wallet and expense tracking application.",
+  "id": "/erogediary2/",
+  "name": "Chronicle",
+  "short_name": "Chronicle",
+  "description": "Visual diary app for screenshots",
   "start_url": "./index.html",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#050507",
-  "theme_color": "#050507",
-  "categories": ["finance", "utilities"],
+  "background_color": "#e2f0fe",
+  "theme_color": "#0284c7",
+  "categories": ["lifestyle", "utilities"],
   "icons": [
     {
       "src": "icon-192.png",
