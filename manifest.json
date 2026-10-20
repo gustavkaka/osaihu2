@@ -3,7 +3,7 @@
   "name": "Chronicle",
   "short_name": "Chronicle",
   "description": "Visual diary app for screenshots",
-  "start_url": "./index.html",
+  "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#e2f0fe",
